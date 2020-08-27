@@ -1,0 +1,54 @@
+package com.ibm.currencyconversion.service;
+
+import java.text.DecimalFormat;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import com.ibm.msactivity.currencyconversionms.model.CurrencyConversion;
+
+@Service
+public class CurrencyConversionService {
+	
+	@Autowired
+	CurrencyConversionFeignClient fiegnClient;
+	
+	@Autowired
+	LoadBalancerClient lbClient;
+	
+	
+	  @Bean	  
+	  @LoadBalanced RestTemplate getRestTemplate() { return new RestTemplate(); }
+	 
+	
+	public double calcCurrencyConversionV1(CurrencyConversion cc) {
+		
+		String url="http://localhost:8081/conversionFactor/{countryCode}";
+		
+		RestTemplate template = new RestTemplate();
+		HttpEntity<String> reqEntity = new HttpEntity<String>(cc.getCountryCode());
+		HttpEntity<Double> conversionFactor = template.exchange(url, HttpMethod.GET, reqEntity, Double.class,cc.getCountryCode());
+		double convertedAmount = conversionFactor.getBody()*cc.getAmount();
+		
+		return convertedAmount;
+		
+	}
+	
+	
+	public double calcCurrencyConversionV2(CurrencyConversion cc) {	
+		Double conversionFactor = fiegnClient.calcCurrencyConversion(cc.getCountryCode());		
+		double convertedAmount = conversionFactor*cc.getAmount();
+		System.out.println("convertedAmount:"+convertedAmount);
+		DecimalFormat df = new DecimalFormat("#.##");
+		System.out.println(df.format(convertedAmount));
+		return Double.valueOf(df.format(convertedAmount));
+		
+	}
+
+}
